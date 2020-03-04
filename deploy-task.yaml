@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: deploy-simple-kubectl-task
+spec:
+  inputs:
+    resources:
+    - name: git-source
+      type: git
+  steps:
+  - name: install-new
+    image: lachlanevenson/k8s-kubectl
+    command: ['kubectl']
+    args:
+    - 'apply'
+    - '-f'
+    - './git-source/user-app/config'

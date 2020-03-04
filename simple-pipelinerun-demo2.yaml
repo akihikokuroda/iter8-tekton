@@ -1,0 +1,46 @@
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: git-source-demo2
+  namespace: kabanero
+spec:
+  type: git
+  params:
+  - name: revision
+    value: master
+  - name: url
+    value: https://github.com/akihikokuroda/iter8-demo2.git
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineResource
+metadata:
+  name: docker-image-demo2
+  namespace: kabanero
+spec:
+  type: image
+  params:
+  - name: url
+    value: akihikokuroda/demo2:latest
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: PipelineRun
+metadata:
+  name: simple-pipelinerun-demo2
+  namespace: kabanero
+spec:
+  serviceAccountName: demo
+  pipelineRef:
+    name: simple-pipeline
+  resources:
+  - name: git-source
+    resourceRef:
+      name: git-source-demo2
+  - name: docker-image
+    resourceRef:
+      name: docker-image-demo2
+
+
