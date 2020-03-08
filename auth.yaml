@@ -1,33 +1,33 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: secret-github-test
+  name: secret-github
   annotations:
     tekton.dev/git-0: https://github.com
 type: kubernetes.io/basic-auth
 stringData:
   username: akihikokuroda
-  password: f493b10baf1e4b50b1263107bd79d81425d34743
+  password: <token>
 
 ---
 
 apiVersion: v1
 kind: Secret
 metadata:
-  name: secret-dockerhub-test
+  name: secret-dockerhub
   annotations:
-    tekton.dev/docker-0: https://index.docker.io/v1
+    tekton.dev/docker-0: https://index.docker.io/v1/
 type: kubernetes.io/basic-auth
 stringData:
   username: akihikokuroda
-  password: rty456RTY=-=-=-
+  password: <token>
 
 ---
 
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: demo-test
+  name: demo
 secrets:
-  - name: secret-github-test
-  - name: secret-dockerhub-test
+  - name: secret-github
+  - name: secret-dockerhub

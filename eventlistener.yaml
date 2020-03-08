@@ -1,0 +1,243 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: demo-role-binding
+  namespace: kabanero
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: demo-role
+subjects:
+- kind: ServiceAccount
+  name: demo
+  namespace: kabanero
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: demo-role
+  namespace: kabanero
+rules:
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  - ingresses/status
+  verbs:
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  - namespaces
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - configmaps
+  verbs:
+  - get
+  - list
+  - create
+  - delete
+  - update
+  - watch
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - tasks
+  - clustertasks
+  - taskruns
+  - pipelines
+  - pipelineruns
+  - pipelineresources
+  - eventlisteners
+  - triggerbindings
+  - triggertemplates
+  - conditions
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - taskruns/finalizers
+  - pipelineruns/finalizers
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - tasks/status
+  - clustertasks/status
+  - taskruns/status
+  - pipelines/status
+  - pipelineruns/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: demo-eventlistener
+  namespace: kabanero
+spec:
+  serviceAccountName: demo
+  serviceType: NodePort
+  triggers:
+  - name: sample-pipelines-event
+    bindings:
+    - apiversion: v1alpha1
+      kind: TriggerBinding
+      name: simple-pipeline-binding
+    template:
+      apiversion: v1alpha1
+      name: simple-pipeline-template
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: simple-pipeline-binding
+  namespace: kabanero
+spec:
+  params:
+  - name: gitrevision
+    value: $(body.pull_request.head.sha)
+  - name: gitrepositoryurl
+    value: $(body.repository.clone_url)
+  - name: docker-tag
+    value: $(body.repository.name):$(body.pull_request.head.sha)
+  - name: event-type
+    value: $(header.X-Github-Event)
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: simple-pipeline-template
+  namespace: kabanero
+spec:
+  params:
+  - description: The revision of your Git repository
+    name: gitrevision
+  - description: The url of your Git repository
+    name: gitrepositoryurl
+  - description: The Git event type
+    name: event-type
+  - description: The image registry
+    name: docker-registry
+    default: akihikokuroda
+  - description: The image tag
+    name: docker-tag
+  - description: The ServiceAccount that the PipelineRun will execute under
+    name: service-account
+    default: demo
+  - description: The namespace in which to create this TriggerTemplate's resources
+    name: namespace
+    default: kabanero
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: git-source-$(uid)
+      namespace: $(params.namespace)
+    spec:
+      params:
+      - name: revision
+        value: $(params.gitrevision)
+      - name: url
+        value: $(params.gitrepositoryurl)
+      type: git
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: docker-image-$(uid)
+      namespace: $(params.namespace)
+    spec:
+      params:
+      - name: url
+        value: $(params.docker-registry)/$(params.docker-tag)
+      type: image
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineRun
+    metadata:
+      generateName: simple-pipeline-run-
+      namespace: $(params.namespace)
+    spec:
+      params:
+      - name: event-type
+        value: $(params.event-type)
+      - name: version
+        value: $(params.gitrevision)
+      pipelineRef:
+        name: simple-pipeline
+      resources:
+      - name: git-source
+        resourceRef:
+          name: git-source-$(uid)
+      - name: docker-image
+        resourceRef:
+          name: docker-image-$(uid)
+      serviceAccountName: $(params.service-account)

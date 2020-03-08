@@ -3,6 +3,11 @@ kind: Pipeline
 metadata:
   name: simple-pipeline
 spec:
+  params:
+  - name: version
+    type: string
+    default: latest
+    description: version of the deployment and tag of the image
   resources: 
   - name: git-source
     type: git
@@ -21,10 +26,16 @@ spec:
         resource: docker-image
   - name: deploy-simple
     runAfter: [build-simple]
+    params:
+    - name: version
+      value: $(params.version)
     taskRef: 
       name: deploy-simple-kubectl-task
     resources: 
       inputs:
       - name: git-source
         resource: git-source 
+      outputs:
+      - name: builtImage
+        resource: docker-image
 
