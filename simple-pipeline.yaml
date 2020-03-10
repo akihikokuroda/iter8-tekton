@@ -8,6 +8,14 @@ spec:
     type: string
     default: latest
     description: version of the deployment and tag of the image
+  - name: project
+    type: string
+    default: demo
+    description: project name
+  - name: namespace
+    type: string
+    default: kabanero
+    description: project name
   resources: 
   - name: git-source
     type: git
@@ -38,4 +46,16 @@ spec:
       outputs:
       - name: builtImage
         resource: docker-image
+  - name: iter8
+    runAfter: [deploy-simple]
+    params:
+    - name: version
+      value: $(params.version)
+    - name: project-name
+      value: $(params.project)
+    - name: target-namespace
+      value: $(params.namespace)
+    taskRef: 
+      name: create-experiment-task
+
 

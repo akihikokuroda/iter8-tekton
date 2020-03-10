@@ -197,6 +197,10 @@ spec:
   - description: The namespace in which to create this TriggerTemplate's resources
     name: namespace
     default: kabanero
+  - name: project
+    default: demo
+    description: project name
+
   resourcetemplates:
   - apiVersion: tekton.dev/v1alpha1
     kind: PipelineResource
@@ -231,6 +235,10 @@ spec:
         value: $(params.event-type)
       - name: version
         value: $(params.gitrevision)
+      - name: project
+        value: $(params.project)
+      - name: namespace
+        value: $(params.namespace)
       pipelineRef:
         name: simple-pipeline
       resources:
