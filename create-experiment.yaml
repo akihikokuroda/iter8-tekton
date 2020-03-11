@@ -25,7 +25,7 @@ spec:
         # But if this isn't defined will select first deployment that satisfies
         # the service selector (service from Experiment)
 
-        CONNECTOR='.'
+        CONNECTOR='-'
         NUM_DR=$(kubectl --namespace ${CLUSTER_NAMESPACE} get dr --selector=iter8${CONNECTOR}tools/role=stable --output json | jq '.items | length')
         if (( ${NUM_DR} == 0 )); then
           SERVICE=$(inputs.params.project-name)

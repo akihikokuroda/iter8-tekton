@@ -32,8 +32,32 @@ spec:
       outputs:
       - name: builtImage
         resource: docker-image
-  - name: deploy-simple
+  - name: generate-load
     runAfter: [build-simple]
+    taskRef:
+      name: generate-load-task
+    resources:
+      inputs:
+      - name: git-source
+        resource: git-source
+    params:
+    - name: version
+      value: $(params.version)
+    - name: target-namespace
+      value: $(params.namespace)
+  - name: iter8
+    runAfter: [build-simple]
+    params:
+    - name: version
+      value: $(params.version)
+    - name: project-name
+      value: $(params.project)
+    - name: target-namespace
+      value: $(params.namespace)
+    taskRef: 
+      name: create-experiment-task
+  - name: deploy-simple
+    runAfter: [iter8]
     params:
     - name: version
       value: $(params.version)
@@ -46,8 +70,8 @@ spec:
       outputs:
       - name: builtImage
         resource: docker-image
-  - name: iter8
-    runAfter: [deploy-simple]
+  - name: wait
+    runAfter: [iter8]
     params:
     - name: version
       value: $(params.version)
@@ -56,6 +80,5 @@ spec:
     - name: target-namespace
       value: $(params.namespace)
     taskRef: 
-      name: create-experiment-task
-
+      name: wait-completion-task
 
