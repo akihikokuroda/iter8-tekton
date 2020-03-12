@@ -16,11 +16,32 @@ spec:
     type: string
     default: kabanero
     description: project name
+  - name: eventlistener
+    type: string
+    description: dispatcher event listener name
+  - name: configmap-name
+    type: string
+    description: name configmap
+  - name: key-name
+    type: string
+    description: key name in the data
+  - name: repo_full_name
+    default: ""
+    description: 
+  - name: sha
+    default: ""
+    description:
+  - name: request_url
+    default: ""
+    description:
   resources: 
   - name: git-source
     type: git
   - name: docker-image
     type: image
+  workspaces:
+  - name: output
+  - name: input
   tasks:
   - name: build-simple
     taskRef:
@@ -72,6 +93,9 @@ spec:
         resource: docker-image
   - name: wait
     runAfter: [iter8]
+    workspaces:
+    - name: output
+      workspace: output
     params:
     - name: version
       value: $(params.version)
@@ -79,6 +103,27 @@ spec:
       value: $(params.project)
     - name: target-namespace
       value: $(params.namespace)
+    - name: configmap-name
+      value: $(params.configmap-name)
+    - name: key-name
+      value: $(params.key-name)
+    - name: repo_full_name
+      value: $(params.repo_full_name)
+    - name: sha
+      value: $(params.sha)
+    - name: request_url
+      value: $(params.request_url)
     taskRef: 
       name: wait-completion-task
+  - name: notify
+    runAfter: [wait]
+    workspaces:
+    - name: input
+      workspace: input
+    params:
+    - name: eventlistener
+      value: $(params.eventlistener)
+    taskRef:
+      kind: Task
+      name: notify
 

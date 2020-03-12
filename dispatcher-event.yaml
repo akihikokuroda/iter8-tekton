@@ -1,0 +1,323 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Condition
+metadata:
+  name: is-equal
+spec:
+  params:
+  - name: left
+    type: string
+  - name: right
+    type: string
+  check:
+    image: alpine
+    script: |
+      #!/bin/sh
+      if [ $(params.left) = $(params.right) ]; then
+        echo "$(params.left) == $(params.right)"
+        exit 0
+      else
+        echo "$(params.left) != $(params.right)"
+        exit 1
+      fi
+
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: dispatcher-template
+  namespace: kabanero
+spec:
+  params:
+  - default: "message"
+    description: message in the notification
+    name: message
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineRun
+    metadata:
+      generateName: dispatcher-pipeline-run-
+    spec:
+      params:
+      - name: message
+        value: $(params.message)
+      - name: server
+        value: server-secret
+      - name: subject
+        value: "Event time"
+      - name: body
+        value: $(params.message)
+      - name: sender
+        value: "<me@myserver.com>"
+      - name: recipients
+        value: "<to@smtp.mailtrap.io>"
+      - name: webhook-secret
+        value: webhook-secret
+      - name: token-secret
+        value: token-secret
+      - name: channel
+        value: "CTS8NL0SK"
+      pipelineRef:
+        name: dispatcher-pipeline
+
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: github-template
+  namespace: kabanero
+spec:
+  params:
+  - name: REPO_FULL_NAME
+    default: ""
+    description:
+  - name: SHA
+    default: ""
+    description:
+  - name: DESCRIPTION
+    default: ""
+    description:
+  - name: STATE
+    default: ""
+    description:
+  - name: TARGET_URL
+    default: ""
+    description:
+  - name: REQUEST_URL
+    default: ""
+    description:
+  - name: COMMENT
+    default: ""
+    description:
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineRun
+    metadata:
+      generateName: git-pipeline-run-
+    spec:
+      params:
+      - name: GITHUB_HOST_URL
+        value: "github.ibm.com"
+      - name: API_PATH_PREFIX
+        value: "/api/v3"
+      - name: REPO_FULL_NAME
+        value: $(params.REPO_FULL_NAME)
+      - name: SHA
+        value: $(params.SHA)
+      - name: DESCRIPTION
+        value: $(params.DESCRIPTION)
+      - name: STATE
+        value: $(params.STATE)
+      - name: TARGET_URL
+        value: $(params.REQUEST_URL)
+      - name: REQUEST_URL
+        value: $(params.REQUEST_URL)
+      - name: COMMENT
+        value: $(params.COMMENT)
+      pipelineRef:
+        name: github-pipeline
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: dispatcher-binding
+  namespace: kabanero
+spec:
+  params:
+  - name: message
+    value: $(body.payload.message)
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: github-binding
+  namespace: kabanero
+spec:
+  params:
+  - name: REPO_FULL_NAME
+    value: $(body.payload.repo_full_name)
+  - name: SHA
+    value: $(body.payload.sha)
+  - name: STATE
+    value: $(body.payload.state)
+  - name: REQUEST_URL
+    value: $(body.payload.request_url)
+  - name: COMMENT
+    value: $(body.payload.message)
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: dispatcher-pipeline
+  namespace: kabanero
+spec:
+  params:
+  - name: message
+    type: string
+    default: Default massage from pipeline
+    description: Notification message
+  - name: server
+    type: string
+    description: secret name of SMTP server configuration
+  - name: subject
+    type: string
+    default: Default subject from pipeline
+    description: email subject
+  - name: body
+    type: string
+    default: Default body from pipeline
+    description: email body
+  - name: sender
+    type: string
+    description: email sender address
+  - name: recipients
+    type: string
+    description: email reciever address
+  - name: webhook-secret
+    type: string
+    description: secret name of slack webhook
+  - name: token-secret
+    type: string
+    description: secret name of slack token
+  - name: channel
+    type: string
+    description: slack channel id or name
+  tasks:
+  - name: slack-channel
+    params:
+    - name: message
+      value: $(params.message)
+    - name: token-secret
+      value: $(params.token-secret)
+    - name: channel
+      value: $(params.channel)
+    taskRef:
+      kind: Task
+      name: send-to-channel-slack
+  - name: slack-webhook
+    params:
+    - name: message
+      value: $(params.message)
+    - name: webhook-secret
+      value: $(params.webhook-secret)
+    taskRef:
+      kind: Task
+      name: send-to-webhook-slack
+  - name: mail
+    params:
+    - name: server
+      value: $(params.server)
+    - name: subject
+      value: $(params.subject)
+    - name: body
+      value: $(params.body)
+    - name: sender
+      value: $(params.sender)
+    - name: recipients
+      value: $(params.recipients)
+    taskRef:
+      kind: Task
+      name: sendmail
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: github-pipeline
+  namespace: kabanero
+spec:
+  params:
+  - name: GITHUB_HOST_URL
+    type: string
+    default: github.ibm.com
+  - name: API_PATH_PREFIX
+    type: string
+  - name: REPO_FULL_NAME
+    type: string
+  - name: SHA
+    type: string
+  - name: STATE
+    type: string
+  - name: REQUEST_URL
+    type: string
+  - name: COMMENT
+    type: string
+  tasks:
+  - name: github-set-status
+    params:
+    - name: GITHUB_HOST_URL
+      value: $(params.GITHUB_HOST_URL)
+    - name: API_PATH_PREFIX
+      value: $(params.API_PATH_PREFIX)
+    - name: REPO_FULL_NAME
+      value: $(params.REPO_FULL_NAME)
+    - name: SHA
+      value: $(params.SHA)
+    - name: DESCRIPTION
+      value: $(params.COMMENT)
+    - name: STATE
+      value: $(params.STATE)
+    - name: TARGET_URL
+      value: $(params.REQUEST_URL)
+    taskRef:
+      kind: Task
+      name: github-set-status
+  - name: github-add-comment
+    params:
+    - name: GITHUB_HOST_URL
+      value: $(params.GITHUB_HOST_URL)
+    - name: API_PATH_PREFIX
+      value: $(params.API_PATH_PREFIX)
+    - name: REQUEST_URL
+      value: $(params.REQUEST_URL)
+    - name: COMMENT
+      value: $(params.COMMENT)
+    taskRef:
+      kind: Task
+      name: github-add-comment
+  - name: github-close-issue
+    conditions:
+    - conditionRef: is-equal
+      params:
+       - name: left
+         value: "Success"
+       - name: right
+         value: $(params.STATE)
+    params:
+    - name: GITHUB_HOST_URL
+      value: $(params.GITHUB_HOST_URL)
+    - name: API_PATH_PREFIX
+      value: $(params.API_PATH_PREFIX)
+    - name: REQUEST_URL
+      value: $(params.REQUEST_URL)
+    taskRef:
+      kind: Task
+      name: github-close-issue
+
+---
+
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: dispatcher-listener
+  namespace: kabanero
+spec:
+  serviceAccountName: default
+  triggers:
+  - name: dispatcher
+    bindings:
+    - name: dispatcher-binding
+    template:
+      name: dispatcher-template
+  - name: github
+    bindings:
+    - name: github-binding
+    template:
+      name: github-template
+

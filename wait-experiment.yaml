@@ -12,6 +12,18 @@ spec:
       - name: target-namespace
         description: namespace in which experiment is running
         default: default
+      - name: configmap-name
+        type: string
+        description: name configmap
+      - name: key-name
+        type: string
+        description: key name in the data
+      - name: repo_full_name
+        type: string
+      - name: sha
+        type: string
+      - name: request_url
+        type: string
   steps:
     - name: wait
       image: kalantar/yq-kubectl
@@ -68,9 +80,8 @@ spec:
           echo "      Assessment: $(kubectl --namespace ${CLUSTER_NAMESPACE} \
             get experiments.iter8.tools ${EXPERIMENT_NAME} \
             --output jsonpath='{.status.assessment.conclusions}')"
-          echo "Rollout dashboard:"
-          kubectl --namespace ${CLUSTER_NAMESPACE} get experiments.iter8.tools ${EXPERIMENT_NAME} --output jsonpath='{.status.grafanaURL}'
-          echo ""
+          echo "{ \"repo_full_name\": \"$(inputs.params.repo_full_name)\", \"sha\": \"$(inputs.params.sha)\", \"request_url\": \"$(inputs.params.request_url)\", \"state\": \"$1\", \"message\": \"$2\"}" | base64 --wrap=0 >  $(workspaces.output.path)/output.txt
+          cat $(workspaces.output.path)/output.txt
         }
 
         startS=$(date +%s)
@@ -87,7 +98,7 @@ spec:
             echo "         _baseline = ${_baseline}"
             echo "        _candidate = ${_candidate}"
             if [[ "${_baseline}" == "${_candidate}" ]]; then
-              log "Stage ${IDS_STAGE_NAME} successfully completes"
+              log "success" "Stage ${IDS_STAGE_NAME} successfully completes"
               touch ${STATUS_FILE}
               exit 0
             fi
@@ -103,7 +114,7 @@ spec:
             if (( ${_b_traffic} == 0 )); then _version_to_delete="$BASELINE";
             elif (( ${_c_traffic} == 0 )); then _version_to_delete="$CANDIDATE";
             else 
-              log "Stage ${IDS_STAGE_NAME} successfully completes"
+              log "success" "Stage ${IDS_STAGE_NAME} successfully completes"
               touch ${STATUS_FILE}
               exit 0 # don't delete a version since traffic is still split
             fi
@@ -128,18 +139,18 @@ spec:
             _assessment=$(kubectl --namespace ${CLUSTER_NAMESPACE} get experiments.iter8.tools ${EXPERIMENT_NAME} -o jsonpath='{.spec.assessment}')
             echo "       _assessment = ${_assessment}"
             if [[ -n ${FORCE_TERMINATION} ]] && [[ -z ${_assessment} ]]; then
-              log "Attempt to terminate experiment in stage ${IDS_STAGE_NAME} but success/failure not specified."
+              log "failure" "Attempt to terminate experiment in stage ${IDS_STAGE_NAME} but success/failure not specified."
               touch ${STATUS_FILE}
-              exit 1
+              exit 0
             fi
             if [[ -z ${FORCE_TERMINATION} ]] && [[ -n ${_assessment} ]] && [[ "${_assessment}" == "${OVERRIDE_FAILURE}" ]]; then
               # This occurs if the spec.assessment field is patched external to the toolchain
               # Since $FORCE_TERMINATION is not set, is in ROLLOUT CANDIDATE
               # If $_assessment is override_failure --> fail
               # Otherwise, let the remaining logic deal with it
-              log "Experiment terminated (${_assessment}) unexpectedly in stage ${IDS_STAGE_NAME}"
+              log "failure" "Experiment terminated (${_assessment}) unexpectedly in stage ${IDS_STAGE_NAME}"
               touch ${STATUS_FILE}
-              exit 1
+              exit 0
             fi
             # the other alternative, [[ "${_assessment}" == "${OVERRIDE_SUCCESS}" ]], occurs if a user
             # manually (outside the toochain) overrides behavior. In this case
@@ -158,39 +169,39 @@ spec:
             if [[ "${_succeeded}" == "False" ]]; then
               # called from IMMEDIATE ROLLBACK
               if [[ -n ${FORCE_TERMINATION} ]] && [[ "${_assessment}" == "${OVERRIDE_FAILURE}" ]]; then
-                log 'IMMEDIATE ROLLBACK called: experiment successfully rolled back'
+                log "success" 'IMMEDIATE ROLLBACK called: experiment successfully rolled back'
                 touch ${STATUS_FILE}
                 exit 0
               fi
 
               # called from IMMEDIATE ROLLFORWARD
               if [[ -n ${FORCE_TERMINATION} ]] && [[ "${_assessment}" == "${OVERRIDE_SUCCESS}" ]]; then
-                log 'IMMEDIATE ROLLFORWARD called: experiment failed to rollforward'
+                log "failure"  'IMMEDIATE ROLLFORWARD called: experiment failed to rollforward'
                 touch ${STATUS_FILE}
-                exit 1
+                exit 0
               fi
 
               # called from ROLLOUT CANDIDATE
-              log 'ROLLOUT CANDIDATE: Experiment failed'
-              exit 1
+              log "failure" 'ROLLOUT CANDIDATE: Experiment failed'
+              exit 0
 
             # Handle experiment SUCCESS
             else
               # called from IMMEDIATE ROLLBACK
               if [[ -n ${FORCE_TERMINATION} ]] && [[ "${_assessment}" == "${OVERRIDE_FAILURE}" ]]; then
-                log 'IMMEDIATE ROLLBACK called: experiment not rolled back; it successfully completed before rollback could be implemented'
-                exit 1
+                log "failure" 'IMMEDIATE ROLLBACK called: experiment not rolled back; it successfully completed before rollback could be implemented'
+                exit 0
               fi
 
               # called from IMMEDIATE ROLLFORWARD
               if [[ -n ${FORCE_TERMINATION} ]] && [[ "${_assessment}" == "${OVERRIDE_SUCCESS}" ]]; then
-                log 'IMMEDIATE ROLLFORWARD called: experiment successfully rolled forward'
+                log "success" 'IMMEDIATE ROLLFORWARD called: experiment successfully rolled forward'
                 touch ${STATUS_FILE}
                 exit 0
               fi
 
               # called from ROLLOUT CANDIDATE
-              log 'ROLLOUT CANDIDATE: Experiment succeeded'
+              log "success" 'ROLLOUT CANDIDATE: Experiment succeeded'
               touch ${STATUS_FILE}
               exit 0
             fi
@@ -206,12 +217,27 @@ spec:
         echo "   To check status of rollout: kubectl --namespace ${CLUSTER_NAMESPACE} experiments.iter8.tools ${EXPERIMENT_NAME}"
         echo "   To delete original version (successful rollout), trigger stage IMMEDIATE ROLLFORWARD"
         echo "   To delete candidate version (failed rollout), trigger stage IMMEDIATE ROLLBACK"
-        log "WARNING: Stage ${IDS_STAGE_NAME} did not complete experiment in ${DURATION}s"
+        log "failure"  "WARNING: Stage ${IDS_STAGE_NAME} did not complete experiment in ${DURATION}s"
         touch ${STATUS_FILE}
-        exit 1
+        exit 0
+    - name: output
+      image: lachlanevenson/k8s-kubectl:latest
+      script: |
+        #!/bin/sh
+        cat <<EOF | kubectl apply --validate=false -f - || true
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: $(inputs.params.configmap-name)
+        data:
+          $(inputs.params.key-name): $(cat $(workspaces.output.path)/output.txt)
+        EOF
       volumeMounts:
         - name: status
           mountPath: /status
+  workspaces:
+    - name: output
+      mountPath: /ws
   volumes:
     - name: status
       emptyDir: {}

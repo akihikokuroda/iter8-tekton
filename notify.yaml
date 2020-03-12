@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: notify
+spec:
+  inputs:
+    params:
+    - name: eventlistener
+      type: string
+      description: listener name
+    - name: options
+      type: string
+      description: additional options for CURL command
+      default: ""
+  workspaces:
+  - name: input
+    mountPath: /ws
+  steps:
+  - name: notify
+    image: curlimages/curl:7.68.0
+    script: |
+      #!/bin/sh
+      DATA='{"tekton": {"eventlistener": "'$EVENTLISTENER'", "pipeline": "'$PIPELINE'", "pipelinerun": "'$PIPELINERUN'", "pipelinetask": "'$PIPELINETASK'", "task": "'$TASK'", "trigger": "'$TRIGGER'", "triggereventid": "'$TRIGGEREVENTID'", "taskrun": "'$TASKRUN'", "namespace": "'$NAMESPACE'" }, "payload": '$(base64 -d $(workspaces.input.path)/output.txt)}
+      echo $DATA > temp
+      cat temp
+      /usr/bin/curl  -X POST -H 'Content-type: application/json' $(inputs.params.options)  --data @temp http://$(inputs.params.eventlistener):8080/
+    env:
+    - name: EVENTLISTENER
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/eventlistener']
+    - name: PIPELINE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/pipeline']
+    - name: PIPELINERUN 
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/pipelineRun']
+    - name: PIPELINETASK
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/pipelineTask']
+    - name: TASK
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/task']
+    - name: TRIGGER
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/trigger']
+    - name: TRIGGEREVENTID
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['tekton.dev/triggers-eventid']
+    - name: TASKRUN
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    - name: NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace

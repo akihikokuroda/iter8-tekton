@@ -170,6 +170,12 @@ spec:
     value: $(body.repository.name):$(body.pull_request.head.sha)
   - name: event-type
     value: $(header.X-Github-Event)
+  - name: repo_full_name
+    value: $(body.repository.full_name)
+  - name: sha
+    value: $(body.pull_request.head.sha)
+  - name: request_url
+    value: $(body.pull_request.html_url)
 
 ---
 
@@ -200,6 +206,15 @@ spec:
   - name: project
     default: demo
     description: project name
+  - name: repo_full_name
+    default: ""
+    description: 
+  - name: sha
+    default: ""
+    description:
+  - name: request_url
+    default: ""
+    description:
 
   resourcetemplates:
   - apiVersion: tekton.dev/v1alpha1
@@ -239,6 +254,18 @@ spec:
         value: $(params.project)
       - name: namespace
         value: $(params.namespace)
+      - name: configmap-name
+        value: payload
+      - name: key-name
+        value: payloadkey
+      - name: eventlistener
+        value: el-dispatcher-listener
+      - name: repo_full_name
+        value: $(params.repo_full_name)
+      - name: sha
+        value: $(params.sha)
+      - name: request_url
+        value: $(params.request_url)
       pipelineRef:
         name: simple-pipeline
       resources:
@@ -249,3 +276,13 @@ spec:
         resourceRef:
           name: docker-image-$(uid)
       serviceAccountName: $(params.service-account)
+      workspaces:
+      - name: output
+        emptyDir: {}
+        subPath: output.txt
+      - name: input
+        configMap:
+          name: payload
+          items:
+            - key: payloadkey
+              path: output.txt      
