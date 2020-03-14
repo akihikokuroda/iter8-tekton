@@ -7,41 +7,41 @@ metadata:
 
 ---
 
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: demo-virtual-service
-  namespace: kabanero  
-spec:
-  hosts:
-  - "*"
-  gateways:
-  - demo-gateway
-  http:  
-  - route:
-     - destination:
-        host: demo
-        port:
-          number: 3000
-
+#apiVersion: networking.istio.io/v1alpha3
+#kind: VirtualService
+#metadata:
+#  name: demo-virtual-service
+#  namespace: kabanero  
+#spec:
+#  hosts:
+#  - "*"
+#  gateways:
+#  - demo-gateway
+#  http:  
+#  - route:
+#     - destination:
+#        host: demo
+#        port:
+#          number: 3000
+#
 ---
 
-apiVersion: networking.istio.io/v1alpha3
-kind: Gateway
-metadata:
-  name: demo-gateway
-  namespace: kabanero
-spec:
-  selector:
-    istio: ingressgateway # use istio default controller
-  servers:
-  - port:
-      number: 80
-      name: http
-      protocol: HTTP
-    hosts:
-    - "*"
-
+#apiVersion: networking.istio.io/v1alpha3
+#kind: Gateway
+#metadata:
+#  name: demo-gateway
+#  namespace: kabanero
+#spec:
+#  selector:
+#    istio: ingressgateway # use istio default controller
+#  servers:
+#  - port:
+#      number: 80
+#      name: http
+#      protocol: HTTP
+#    hosts:
+#    - "*"
+#
 ---
 
 apiVersion: v1

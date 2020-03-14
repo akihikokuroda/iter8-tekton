@@ -38,8 +38,8 @@ spec:
         TARGET_PORT="${TARGET_PORT:-80}"
         PORT=$(kubectl --namespace istio-system get service istio-ingressgateway --output jsonpath="{.spec.ports[?(@.targetPort==$TARGET_PORT)].nodePort}")
         # hack
-        PORT=30313
-        IP=9.160.71.210
+        PORT=30199
+        IP=9.160.68.83
         URL_PATH=$(grep app-path ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//')
         URL="http://${IP}:${PORT}/${URL_PATH}"
         echo "Application URL = ${URL}"

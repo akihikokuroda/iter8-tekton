@@ -62,9 +62,11 @@ spec:
         kind: Experiment 
         metadata:
           name: ${EXPERIMENT_NAME}
-          labels:
-            app.kubernetes.io/name: reviews
         spec:
+          #routingReference:
+          #  apiVersion: networking.istio.io/v1alpha3
+          #  kind: VirtualService
+          #  name: <virtual service name>
           targetService:
             name: $(inputs.params.project-name)
             apiVersion: v1 
