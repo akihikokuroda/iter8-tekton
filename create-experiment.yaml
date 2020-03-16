@@ -14,7 +14,8 @@ spec:
         default: default
   steps:
     - name: identify-stable
-      image: kalantar/yq-kubernetes
+      #image: kalantar/yq-kubernetes
+      image: linkyard/kubectl:1.14.2
       script: |
         #!/bin/bash
         CANDIDATE_DEPLOYMENT_NAME=$(inputs.params.project-name)-$(inputs.params.version)

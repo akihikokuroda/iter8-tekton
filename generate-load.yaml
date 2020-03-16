@@ -16,7 +16,8 @@ spec:
         default: iter8/pipeline.prop
   steps:
     - name: generate-load
-      image: kalantar/yq-kubernetes
+      #image: kalantar/yq-kubernetes
+      image: linkyard/kubectl:1.14.2
       script: |
         #!/bin/bash
         CLUSTER_NAMESPACE=$(inputs.params.target-namespace)
@@ -39,7 +40,7 @@ spec:
         PORT=$(kubectl --namespace istio-system get service istio-ingressgateway --output jsonpath="{.spec.ports[?(@.targetPort==$TARGET_PORT)].nodePort}")
         # hack
         PORT=30199
-        IP=9.160.68.83
+        IP=9.160.34.94
         URL_PATH=$(grep app-path ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//')
         URL="http://${IP}:${PORT}/${URL_PATH}"
         echo "Application URL = ${URL}"

@@ -26,7 +26,8 @@ spec:
         type: string
   steps:
     - name: wait
-      image: kalantar/yq-kubectl
+      #image: kalantar/yq-kubectl
+      image: linkyard/kubectl:1.14.2
       script: |
         #!/bin/bash
         EXPERIMENT_NAME=$(inputs.params.project-name)-$(inputs.params.version)
