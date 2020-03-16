@@ -19,11 +19,6 @@ spec:
   steps:
   - name: install-new
     image: lachlanevenson/k8s-kubectl
-    #command: ['kubectl']
-    #args:
-    #- 'apply'
-    #- '-f'
-    #- './git-source/user-app/config'
     script: |
       #!/bin/sh
       sed -i -e 's#$VER#$(inputs.params.version)#g' ./git-source/user-app/config/deploy.yaml
