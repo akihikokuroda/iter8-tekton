@@ -16,7 +16,6 @@ spec:
         default: iter8/pipeline.prop
   steps:
     - name: generate-load
-      #image: kalantar/yq-kubernetes
       image: linkyard/kubectl:1.14.2
       script: |
         #!/bin/bash
@@ -28,19 +27,8 @@ spec:
           HOST=$(echo $HOST | sed "s#\$NAMESPACE#$CLUSTER_NAMESPACE#")
           echo "HOST = $HOST"
         fi
-        IP=$(kubectl --namespace istio-system get service istio-ingressgateway --output jsonpath='{.status.loadBalancer.ingress[0].ip}')
-        if [[ -z ${IP} ]]; then
-          IP=$(kubectl --namespace istio-system get service istio-ingressgateway --output jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-        fi
-        if [[ -z ${IP} ]]; then
-          IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type == "ExternalIP")].address}')
-        fi
-        TARGET_PORT=$(grep app-port ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//') 
-        TARGET_PORT="${TARGET_PORT:-80}"
-        PORT=$(kubectl --namespace istio-system get service istio-ingressgateway --output jsonpath="{.spec.ports[?(@.targetPort==$TARGET_PORT)].nodePort}")
-        # hack
-        PORT=30199
-        IP=9.160.34.94
+        PORT=$(grep port ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//') 
+        IP=$(grep ip ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//') 
         URL_PATH=$(grep app-path ${PROPERTY_FILE} | cut -d':' -f2 | sed 's/^[[:space:]]//')
         URL="http://${IP}:${PORT}/${URL_PATH}"
         echo "Application URL = ${URL}"

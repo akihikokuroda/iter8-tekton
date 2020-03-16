@@ -6,7 +6,7 @@ spec:
   inputs:
     params:
       - name: project-name
-        #default: demo
+        description: service name of the project application
       - name: version
         default: latest
       - name: target-namespace
