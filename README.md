@@ -24,14 +24,25 @@
 - https://github.com/tektoncd/catalog/tree/master/mail
 - https://github.com/tektoncd/catalog/tree/master/slackmessage
 
+## Sample demo project
+
+- https://github.com/akihikokuroda/iter8-demo
+
+## Front demo project
+
+- https://github.com/akihikokuroda/iter8-front
+
 ## pre-condition:
 
+1. Tekton pipeline, triggers installed
 1. Istio installed
 1. Iter8 installed
-1. Namespace with Istio proxy auto injection enabled created
+1. Namespace with Istio proxy auto injection enabled created (init.yaml)
 1. One version of the project installed.
-1. Service for the project created
-1. The front application that sends the requst to the demo porject installed
+1. Service for the project created (init.yaml)
+1. The front application that sends the requst to the demo porject installed (https://github.com/akihikokuroda/iter8-front)
+1. Tekton resources for this demo (task, pipeline, eventlistener, triggerbindings, triggertemplates) installed
+1. Hooks in the demo github repository created.
 
 ## Step:
 
